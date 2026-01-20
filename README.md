@@ -2,6 +2,10 @@
 
 ![Svelte](https://img.shields.io/badge/svelte-%23f1413d.svg?style=for-the-badge&logo=svelte&logoColor=white)
 
+
+<img src="public/favicon.ico" width="50" alt="Portfolio Icon" />
+
+
 My personal portfolio website hosted at [Hachem](https://hachem.pro).
 
 ## Credits
