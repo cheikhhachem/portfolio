@@ -1,0 +1,94 @@
+/* CUSTOM FONT */
+@import url('https://fonts.googleapis.com/css2?family=Changa:wght@200;300;400;500;600;700;800&display=swap');
+
+/* LIGHT MODE COLORS */
+:root {
+  font-family: "Changa", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  --bg: #fff;
+  --bg-alt: #333;
+  --bg-alt-2: #f0f0f0;
+  --bg-transparent: #ffffffe8;
+  --border: 0.01rem solid #333;
+  --text: #333;
+  --text-alt: #fff;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* DARK MODE COLORS */
+:root.dark-mode {
+  --bg: #202124;
+  --bg-alt: #3c3d40;
+  --bg-alt-2: #333;
+  --bg-transparent: #333333f5;
+  --border: 0.01rem solid #5a5a5a;
+  --text: #fff;
+  --text-alt: #fff;
+}
+
+/* GENERAL */
+html, body {
+  font-family: "Changa", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: fixed;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h5, p {
+  margin: 0;
+}
+
+.icon {
+  height: 2rem;
+  width: 2rem;
+  margin: 0 0.5rem;
+}
+
+/* ANIMATIONS */
+@keyframes hover {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media screen and (max-height: 800px) {
+  #hero h5,
+  #hero h1,
+  #hero p {
+    transform: translateY(3rem);
+  }
+}
+
+@media screen and (max-height: 700px) {
+  #hero h5,
+  #hero h1,
+  #hero p {
+    transform: translateY(5rem);
+  }
+}
+
+@media screen and (max-height: 600px) {
+  #hero h5,
+  #hero h1,
+  #hero p {
+    transform: translateY(7rem);
+  }
+}
