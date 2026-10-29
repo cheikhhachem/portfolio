@@ -1,7 +1,24 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { activeCorner, type Corner } from '../stores/navigation';
   import { theme } from '../stores/theme';
+  import { createIdleBlink } from '../utils/idleBlink';
+  import blinkImage from '../../assets/face-animation-light/blink.png';
+  import blinkTopLeft from '../../assets/face-animation-light/blink-tl.png';
+  import blinkTopRight from '../../assets/face-animation-light/blink-tr.png';
+  import blinkBottomLeft from '../../assets/face-animation-light/blink-bl.png';
+  import blinkBottomRight from '../../assets/face-animation-light/blink-br.png';
+
+  const blinkFrames = {
+    'top-left': blinkTopLeft, 'top-right': blinkTopRight,
+    'bottom-left': blinkBottomLeft, 'bottom-right': blinkBottomRight
+  };
+  let blinking = false;
+  let animating = false;
+  let blinkReady = false;
+  let pageVisible = false;
+  let reducedMotion = false;
+  const blink = createIdleBlink(closed => { blinking = closed; });
 
   const frames = import.meta.glob('../../assets/face-animation-light/*.png', {
     eager: true, query: '?url', import: 'default'
@@ -24,6 +41,8 @@
 
   function animate(corner: Corner) {
     clearInterval(animationInterval);
+    blink.stop();
+    animating = true;
     if (corner) {
       currentSequence = sequences[corner];
       currentFrameIndex = 0;
@@ -34,19 +53,58 @@
         currentFrameIndex += reverse ? -1 : 1;
       } else {
         clearInterval(animationInterval);
+        animating = false;
         activeCorner.faceFinished(corner);
       }
     }, 60);
   }
 
   $: animate($activeCorner);
-  onDestroy(() => clearInterval(animationInterval));
+  $: if (blinkReady && !animating && pageVisible && !reducedMotion) {
+    blink.start();
+  } else {
+    blink.stop();
+  }
+  $: currentImage = blinking
+    ? ($activeCorner ? blinkFrames[$activeCorner] : blinkImage)
+    : currentSequence[currentFrameIndex];
+
+  onMount(() => {
+    let disposed = false;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateVisibility = () => { pageVisible = !document.hidden; };
+    const updateMotion = () => { reducedMotion = motion.matches; };
+    updateVisibility();
+    updateMotion();
+    document.addEventListener('visibilitychange', updateVisibility);
+    motion.addEventListener('change', updateMotion);
+
+    // Decode ahead of time so the first blink never flashes an unloaded image.
+    Promise.all([blinkImage, ...Object.values(blinkFrames)].map(src => {
+      const image = new Image();
+      image.src = src;
+      return image.decode();
+    })).then(() => {
+      if (!disposed) blinkReady = true;
+    }).catch(() => { /* Keep the regular face if a blink asset cannot load. */ });
+
+    return () => {
+      disposed = true;
+      document.removeEventListener('visibilitychange', updateVisibility);
+      motion.removeEventListener('change', updateMotion);
+      blink.stop();
+    };
+  });
+  onDestroy(() => {
+    clearInterval(animationInterval);
+    blink.stop();
+  });
 </script>
 
 <div class="hero-animation">
     {#if currentSequence.length > 0}
       <img 
-        src={currentSequence[currentFrameIndex]} 
+        src={currentImage}
         class:invert={$theme === 'dark'}
         alt="Character Animation"
         class="hero-animation__img"
