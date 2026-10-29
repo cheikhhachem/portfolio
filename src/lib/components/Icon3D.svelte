@@ -1,8 +1,9 @@
 <script lang="ts">
   import { T, useTask } from '@threlte/core';
   import { spring } from 'svelte/motion';
-  import { Texture, RepeatWrapping, type Mesh, BoxGeometry, EdgesGeometry } from 'three';
-  import { onMount } from 'svelte';
+  import { Texture, RepeatWrapping, type Mesh, type Group, BoxGeometry, EdgesGeometry } from 'three';
+  import { onMount, onDestroy } from 'svelte';
+  import type { CubePhysics } from '../utils/cubePhysics';
 
   // Shared geometry for all icons to improve performance
   const geometry = new BoxGeometry(0.22, 0.22, 0.22);
@@ -14,10 +15,17 @@
   export let hovered = false;
   export let masterHover = false;
   export let rotationSpeed: number;
-  export let floatSpeed: number;
+  export let physics: CubePhysics;
   export let isDark = false;
   
   let meshRef: Mesh;
+  let groupRef: Group;
+  const cube = physics.add(basePosition, (body) => {
+    if (!groupRef) return;
+    groupRef.position.copy(body.position);
+    groupRef.quaternion.copy(body.quaternion);
+  });
+  onDestroy(() => physics.remove(cube));
   let loadedTexture: Texture | null = null;
   
   // Expose mesh for position tracking
@@ -27,8 +35,7 @@
   
   let time = 0;
   
-  // Smooth springs for position and rotation
-  const position = spring(basePosition, { stiffness: 0.05, damping: 0.3 });
+  // Rotation and growth keep their original easing; position is now physical.
   const rotation = spring<[number, number, number]>([0, 0, 0], { stiffness: 0.1, damping: 0.4 });
   const scale = spring(1, { stiffness: 0.15, damping: 0.5 });
   
@@ -43,6 +50,10 @@
       createTexture();
     };
     img.src = iconPath;
+    return () => {
+      img.onload = null;
+      loadedTexture?.dispose();
+    };
   });
   
   // Recreate texture when theme changes to invert colors
@@ -99,6 +110,7 @@
     texture.magFilter = 1006; // THREE.LinearFilter
     texture.minFilter = 1006; // THREE.LinearFilter
     texture.anisotropy = 16;
+    loadedTexture?.dispose();
     loadedTexture = texture;
   }
   
@@ -106,23 +118,23 @@
   const offsetX = (Math.random() - 0.5) * 0.3;
   const offsetY = (Math.random() - 0.5) * 0.3;
   
-  // Store last floating position for freeze-on-hover
-  let lastFloatPosition: [number, number, number] = basePosition;
-  let hoverPosition: { 0: number, 1: number, 2: number } | null = null;
+  // Capture the physical position for freeze-on-hover
+  let hoverPosition: [number, number, number] | null = null;
 
   // Use Threlte's useTask for animation loop instead of requestAnimationFrame
   useTask((delta) => {
-    time += 0.0055;
+    time += Math.min(delta, 0.05) * 0.33;
+    cube.pinned = hovered && !masterHover;
     
     if (hovered && !masterHover) {
       // Individual hover: freeze, scale up, fast spin
       if (!hoverPosition) {
-        hoverPosition = { ...lastFloatPosition };
+        hoverPosition = [cube.body.position.x, cube.body.position.y, cube.body.position.z];
       }
-      position.set([hoverPosition[0], hoverPosition[1], hoverPosition[2]]);
+      cube.target.set(...hoverPosition);
       
       rotation.set([
-        rotation.stiffness * 0 + time * rotationSpeed * 8,
+        time * rotationSpeed * 8,
         time * rotationSpeed * 8,
         time * rotationSpeed * 8
       ]);
@@ -141,7 +153,7 @@
         basePosition[2] + Math.sin(time * 2) * 0.3
       ];
       
-      position.set(orbitPos);
+      cube.target.set(...orbitPos);
       
       rotation.set([
         Math.sin(time * 2 + index) * 0.5,
@@ -159,8 +171,7 @@
         basePosition[1] + Math.sin(time * 2 + index) * 0.1 + offsetY,
         basePosition[2] + Math.cos(time * 1.5 + index * 2) * 0.05
       ];
-      position.set(newPos);
-      lastFloatPosition = newPos;
+      cube.target.set(...newPos);
       
       rotation.set([
         time * rotationSpeed,
@@ -169,7 +180,9 @@
       ]);
       scale.set(1);
     }
-  });
+    cube.rotation.setFromEuler(...$rotation, 'XYZ');
+    cube.scale = $scale;
+  }, { before: physics.taskKey });
   
   // Edge line color based on theme
   $: edgeColor = isDark ? 0xFFFFFF : 0x000000;
@@ -184,8 +197,8 @@
 </script>
 
   <T.Group
-    position={$position}
-    rotation={$rotation}
+    bind:ref={groupRef}
+    position={basePosition}
     scale={$scale}
   >
     {#if loadedTexture}

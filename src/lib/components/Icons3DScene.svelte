@@ -2,6 +2,9 @@
   import { Canvas, T } from '@threlte/core';
   import { OrbitControls } from '@threlte/extras';
   import Icon3D from './Icon3D.svelte';
+  import CubePhysicsStep from './CubePhysicsStep.svelte';
+  import { CubePhysics } from '../utils/cubePhysics';
+
   import HoverSync from './HoverSync.svelte';
   import { theme } from '../stores/theme';
   import { onMount } from 'svelte';
@@ -15,6 +18,8 @@
   import lang7 from '../../assets/icons-lang/lang7.png';
   import lang8 from '../../assets/icons-lang/lang8.png';
   
+  const physics = new CubePhysics();
+
   export let masterHover = false;
   export let onCubeEnter: (number: number) => void = () => {};
   let hoveredIndex = -1;
@@ -74,8 +79,7 @@
   $: icons = iconImages.map((img, i) => ({
     path: img,
     position: iconPositions[i],
-    rotationSpeed: 0.3 + 0.15 * (i % 4),
-    floatSpeed: 0.8 + 0.1 * (i % 4)
+    rotationSpeed: 0.3 + 0.15 * (i % 4)
   }));
 </script>
 
@@ -121,7 +125,7 @@
         basePosition={icon.position}
         index={i}
         rotationSpeed={icon.rotationSpeed}
-        floatSpeed={icon.floatSpeed}
+        {physics}
         hovered={hoveredIndex === i}
         {masterHover}
         isDark={$theme === 'dark'}
@@ -129,6 +133,8 @@
       />
     {/each}
     
+    <CubePhysicsStep {physics} />
+
     <!-- Sync hover squares with 3D positions -->
     <HoverSync {iconRefs} {hoverSquares} />
   </Canvas>
