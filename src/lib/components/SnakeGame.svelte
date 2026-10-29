@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { language } from '../stores/language';
+  import { t } from '../utils/translations';
   import { SIZE, canTurn, placeFood, step, type Cell, type Direction } from '../utils/snake';
 
   export let onClose: () => void;
@@ -30,6 +32,9 @@
     restart: 'M3 10a9 9 0 1 1 2 8M3 4v6h6'
   };
   let state: 'ready' | 'running' | 'paused' | 'over' | 'won' = 'ready';
+  $: scoreFormatter = new Intl.NumberFormat($language, { minimumIntegerDigits: 2, useGrouping: false });
+  $: percentFormatter = new Intl.NumberFormat($language, { style: 'percent', maximumFractionDigits: 0 });
+  $: playbackLabel = t($language, state === 'running' ? 'snakePause' : state === 'paused' ? 'snakeResume' : 'snakePlay');
   let drag: { x: number; y: number; id: number } | null = null;
   const arrows: Record<string, Direction> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
 
@@ -126,23 +131,23 @@
 
 <svelte:window on:keydown={keydown} />
 
-<dialog bind:this={dialog} aria-labelledby="snake-title" on:cancel={(event) => { event.preventDefault(); onClose(); }}>
+<dialog bind:this={dialog} lang={$language} dir={$language === 'ar' ? 'rtl' : 'ltr'} aria-labelledby="snake-title" on:cancel={(event) => { event.preventDefault(); onClose(); }}>
   <header>
-    <div><span class="eyebrow">YOU FOUND IT</span><h2 id="snake-title">Snake<span class="dot">.</span></h2></div>
-    <button class="icon-button close" type="button" aria-label="Close Snake" title="Close Snake" on:click={onClose}>{@render icon('close')}</button>
+    <div><span class="eyebrow">{t($language, 'snakeSecret')}</span><h2 id="snake-title">{t($language, 'snakeTitle')}<span class="dot">.</span></h2></div>
+    <button class="icon-button close" type="button" aria-label={t($language, 'snakeClose')} title={t($language, 'snakeClose')} on:click={onClose}>{@render icon('close')}</button>
   </header>
   <div class="speed-controls">
-    <button class="icon-button playback" type="button" aria-label={state === 'running' ? 'Pause game' : 'Play game'} title={state === 'running' ? 'Pause game' : 'Play game'} disabled={state === 'over' || state === 'won'} on:click={pause}>
+    <button class="icon-button playback" type="button" aria-label={playbackLabel} title={playbackLabel} disabled={state === 'over' || state === 'won'} on:click={pause}>
       {@render icon(state === 'running' ? 'pause' : 'play')}
     </button>
     <div class="speed-slider">
-      <label for="snake-speed">SPEED <output for="snake-speed">{speed}%</output></label>
-      <input id="snake-speed" type="range" min="0" max="100" step="1" bind:value={speed} aria-label="Snake speed" aria-valuetext={`${speed} percent`} style={`--fill: ${speed}%`} />
+      <label for="snake-speed">{t($language, 'snakeSpeed')} <output for="snake-speed"><bdi>{percentFormatter.format(speed / 100)}</bdi></output></label>
+      <input id="snake-speed" type="range" min="0" max="100" step="1" bind:value={speed} dir="ltr" aria-label={t($language, 'snakeSpeedLabel')} aria-valuetext={percentFormatter.format(speed / 100)} style={`--fill: ${speed}%`} />
     </div>
   </div>
-  <div class="scoreboard"><span>SCORE <strong>{String(score).padStart(2, '0')}</strong></span><span>BEST <strong>{String(best).padStart(2, '0')}</strong></span></div>
+  <div class="scoreboard"><span>{t($language, 'snakeScore')} <strong><bdi>{scoreFormatter.format(score)}</bdi></strong></span><span>{t($language, 'snakeBest')} <strong><bdi>{scoreFormatter.format(best)}</bdi></strong></span></div>
   <div class="field">
-    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Snake playing field. Swipe or drag to steer." on:pointerdown={pointerdown} on:pointermove={pointermove} on:pointerup={() => drag = null} on:pointercancel={() => drag = null} on:lostpointercapture={() => drag = null}>
+    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={t($language, 'snakeField')} on:pointerdown={pointerdown} on:pointermove={pointermove} on:pointerup={() => drag = null} on:pointercancel={() => drag = null} on:lostpointercapture={() => drag = null}>
       <defs><pattern id="snake-grid" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M 1 0 L 0 0 0 1" fill="none" stroke="currentColor" stroke-width="0.025" opacity="0.12" /></pattern></defs>
       <rect width={SIZE} height={SIZE} fill="url(#snake-grid)" />
       {#if food}<rect class="food" x={food.x + 0.22} y={food.y + 0.22} width="0.56" height="0.56" rx="0.12" fill="none" stroke="currentColor" stroke-width="0.12" />{/if}
@@ -153,23 +158,23 @@
     {#if state !== 'running'}
       <div class="field-message" aria-live="polite">
         <div class="message-card">
-          <h3>{state === 'ready' ? 'A little detour.' : state === 'paused' ? 'Take a breath.' : state === 'won' ? 'Every square. Yours.' : 'One more round?'}</h3>
-          <p>{state === 'ready' ? 'Collect the squares. Loop through the edges.' : state === 'paused' ? 'Your snake can wait.' : `Final score · ${score}`}</p>
+          <h3>{t($language, state === 'ready' ? 'snakeReady' : state === 'paused' ? 'snakePaused' : state === 'won' ? 'snakeWon' : 'snakeOver')}</h3>
+          <p>{state === 'ready' ? t($language, 'snakeInstructions') : state === 'paused' ? t($language, 'snakePausedHint') : `${t($language, 'snakeFinalScore')} · ${score.toLocaleString($language)}`}</p>
           {#if state === 'over' || state === 'won'}
-            <button class="primary-button" type="button" on:click={reset}>{@render icon('restart')}<span>Play again</span></button>
+            <button class="primary-button" type="button" on:click={reset}>{@render icon('restart')}<span>{t($language, 'snakePlayAgain')}</span></button>
           {:else}
-            <button class="primary-button" type="button" on:click={pause}>{@render icon('play')}<span>{state === 'paused' ? 'Resume' : 'Play'}</span></button>
+            <button class="primary-button" type="button" on:click={pause}>{@render icon('play')}<span>{t($language, state === 'paused' ? 'snakeResume' : 'snakePlay')}</span></button>
           {/if}
         </div>
       </div>
     {/if}
   </div>
-  <div class="game-footer"><span>Arrow keys · Swipe to steer</span><span>Edges wrap around</span></div>
-  <nav class="controls" aria-label="Snake direction controls">
-    <button class="up" type="button" aria-label="Move up" on:pointerdown={(e) => { e.preventDefault(); turn('up'); }} on:click={(e) => { if (e.detail === 0) turn('up'); }}>{@render icon('up')}</button>
-    <button class="left" type="button" aria-label="Move left" on:pointerdown={(e) => { e.preventDefault(); turn('left'); }} on:click={(e) => { if (e.detail === 0) turn('left'); }}>{@render icon('left')}</button>
-    <button class="down" type="button" aria-label="Move down" on:pointerdown={(e) => { e.preventDefault(); turn('down'); }} on:click={(e) => { if (e.detail === 0) turn('down'); }}>{@render icon('down')}</button>
-    <button class="right" type="button" aria-label="Move right" on:pointerdown={(e) => { e.preventDefault(); turn('right'); }} on:click={(e) => { if (e.detail === 0) turn('right'); }}>{@render icon('right')}</button>
+  <div class="game-footer"><span>{t($language, 'snakeControlsHint')}</span><span>{t($language, 'snakeEdgesHint')}</span></div>
+  <nav class="controls" aria-label={t($language, 'snakeControlsLabel')}>
+    <button class="up" type="button" aria-label={t($language, 'snakeUp')} on:pointerdown={(e) => { e.preventDefault(); turn('up'); }} on:click={(e) => { if (e.detail === 0) turn('up'); }}>{@render icon('up')}</button>
+    <button class="left" type="button" aria-label={t($language, 'snakeLeft')} on:pointerdown={(e) => { e.preventDefault(); turn('left'); }} on:click={(e) => { if (e.detail === 0) turn('left'); }}>{@render icon('left')}</button>
+    <button class="down" type="button" aria-label={t($language, 'snakeDown')} on:pointerdown={(e) => { e.preventDefault(); turn('down'); }} on:click={(e) => { if (e.detail === 0) turn('down'); }}>{@render icon('down')}</button>
+    <button class="right" type="button" aria-label={t($language, 'snakeRight')} on:pointerdown={(e) => { e.preventDefault(); turn('right'); }} on:click={(e) => { if (e.detail === 0) turn('right'); }}>{@render icon('right')}</button>
   </nav>
 </dialog>
 
@@ -180,6 +185,7 @@
   .eyebrow { font-size: 10px; letter-spacing: 0.22em; opacity: 0.55; }
   h2 { margin: 0; font-size: 38px; font-weight: 500; line-height: 1.15; }
   .dot { opacity: 0.4; }
+  dialog[dir="rtl"] .eyebrow, dialog[dir="rtl"] .scoreboard, dialog[dir="rtl"] .speed-slider label { letter-spacing: normal; }
   button { font: inherit; color: inherit; cursor: pointer; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); border-radius: 10px; background: var(--bg); padding: 6px 14px; touch-action: manipulation; }
   button:hover { background: var(--bg-alt-2); }
   button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
@@ -202,7 +208,7 @@
   .primary-button { margin: auto; }
   .primary-button:hover { opacity: 0.85; }
   .scoreboard { padding: 20px 0 12px; font-size: 11px; letter-spacing: 0.12em; }
-  strong { margin-left: 8px; font: 22px monospace; letter-spacing: 0; }
+  strong { margin-inline-start: 8px; font: 22px monospace; letter-spacing: 0; }
   .field { width: min(100%, 52dvh); margin: auto; box-sizing: border-box; position: relative; border: 1px solid color-mix(in srgb, var(--text) 25%, transparent); border-radius: 10px; overflow: hidden; }
   .field, .field :global(*) {
     -webkit-user-select: none;
@@ -216,7 +222,7 @@
   h3 { margin: 0; font-size: 23px; font-weight: 500; }
   .message-card p { margin: 5px 0 18px; font-size: 13px; opacity: 0.65; }
   .message-card button { pointer-events: auto; background: var(--text); color: var(--bg); padding: 7px 24px; }
-  .game-footer { padding-top: 12px; font-size: 11px; }
+  .game-footer { padding-top: 12px; font-size: 11px; flex-wrap: wrap; gap: 6px 16px; }
   .game-footer span { opacity: 0.55; }
   .controls { display: none; direction: ltr; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(2, 48px); gap: 7px; justify-content: center; margin-top: 12px; }
   .controls button { padding: 0; border-radius: 13px; background: var(--bg-alt-2); box-shadow: 0 3px 0 color-mix(in srgb, var(--text) 18%, transparent); }
