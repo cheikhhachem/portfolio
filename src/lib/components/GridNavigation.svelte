@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activeCorner, type Corner } from '../stores/navigation';
+  import { activeCorner, navigation, visibleCorner, type Corner } from '../stores/navigation';
   import { language } from '../stores/language';
   import { t } from '../utils/translations';
   import { onMount } from 'svelte';
@@ -28,15 +28,17 @@
   let windowWidth = 0;
 
   function togglePanel(corner: ContentPanel) {
-    if ($activeCorner === corner) {
-      activeCorner.close();
-    } else {
-      activeCorner.open(corner);
-    }
+    activeCorner.toggle(corner);
   }
 
   function isActive(corner: ContentPanel): boolean {
-    return $activeCorner === corner;
+    return $visibleCorner === corner;
+  }
+
+  function panelTransitionEnd(event: TransitionEvent) {
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
+    const corner = (event.currentTarget as HTMLDivElement).dataset.corner as ContentPanel;
+    activeCorner.panelFinished(corner);
   }
 
   onMount(() => {
@@ -58,11 +60,14 @@
   <CornerButton
     corner="top-left"
     title={t($language, 'about')}
-    isActive={isActive('top-left')}
+    isActive={$navigation.target === 'top-left' || $navigation.corner === 'top-left'}
     onClick={() => togglePanel('top-left')}
   />
   <div 
     class="content-panel top-left"
+    data-corner="top-left"
+    class:closing={$navigation.phase === 'closing' && $navigation.corner === 'top-left'}
+    on:transitionend={panelTransitionEnd}
     class:active={isActive('top-left')}
     class:mobile={windowWidth <= 1100}
   >
@@ -73,11 +78,14 @@
   <CornerButton
     corner="top-right"
     title={t($language, 'experience')}
-    isActive={isActive('top-right')}
+    isActive={$navigation.target === 'top-right' || $navigation.corner === 'top-right'}
     onClick={() => togglePanel('top-right')}
   />
   <div 
     class="content-panel top-right"
+    data-corner="top-right"
+    class:closing={$navigation.phase === 'closing' && $navigation.corner === 'top-right'}
+    on:transitionend={panelTransitionEnd}
     class:active={isActive('top-right')}
     class:mobile={windowWidth <= 1100}
   >
@@ -88,11 +96,14 @@
   <CornerButton
     corner="bottom-left"
     title={t($language, 'projects')}
-    isActive={isActive('bottom-left')}
+    isActive={$navigation.target === 'bottom-left' || $navigation.corner === 'bottom-left'}
     onClick={() => togglePanel('bottom-left')}
   />
   <div 
     class="content-panel bottom-left"
+    data-corner="bottom-left"
+    class:closing={$navigation.phase === 'closing' && $navigation.corner === 'bottom-left'}
+    on:transitionend={panelTransitionEnd}
     class:active={isActive('bottom-left')}
     class:mobile={windowWidth <= 1100}
   >
@@ -103,11 +114,14 @@
   <CornerButton
     corner="bottom-right"
     title={t($language, 'contact')}
-    isActive={isActive('bottom-right')}
+    isActive={$navigation.target === 'bottom-right' || $navigation.corner === 'bottom-right'}
     onClick={() => togglePanel('bottom-right')}
   />
   <div 
     class="content-panel bottom-right"
+    data-corner="bottom-right"
+    class:closing={$navigation.phase === 'closing' && $navigation.corner === 'bottom-right'}
+    on:transitionend={panelTransitionEnd}
     class:active={isActive('bottom-right')}
     class:mobile={windowWidth <= 1100}
   >
@@ -199,7 +213,8 @@
       font-size: calc(1rem * var(--mobile-scale));
     }
 
-    .content-panel.mobile.active {
+    .content-panel.mobile.active,
+    .content-panel.mobile.closing {
       width: 100vw;
       height: 100vh;
       max-height: 100vh;
@@ -207,7 +222,6 @@
       left: 0 !important;
       right: auto !important;
       bottom: auto !important;
-      transform: translateX(0) translateY(0) !important;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -216,6 +230,10 @@
       padding: calc(1rem * var(--mobile-scale));
       overflow-y: auto;
     }
+  }
+
+  .content-panel.mobile.active {
+    transform: translateX(0) translateY(0) !important;
   }
 
   @media screen and (max-width: 768px) {

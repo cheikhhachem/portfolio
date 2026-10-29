@@ -1,141 +1,46 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { activeCorner, type Corner } from '../stores/navigation';
   import { theme } from '../stores/theme';
 
-  // Import all animation images eagerly
-  // Vite 5+ deprecated 'as' option, use standard import and access .default
-  const lightModules = import.meta.glob('../../assets/face-animation-light/*.png', { eager: true });
+  const frames = import.meta.glob('../../assets/face-animation-light/*.png', {
+    eager: true, query: '?url', import: 'default'
+  }) as Record<string, string>;
 
-  // Helper to extract sequences
-  function getSequence(modules: Record<string, any>, prefix: string): string[] {
-    const keys = Object.keys(modules)
-      .filter(key => {
-        // Normalize path separators and get filename
-        const normalizedKey = key.replace(/\\/g, '/');
-        const fileName = normalizedKey.split('/').pop();
-        // Check if filename starts with prefix followed by - or .
-        return fileName && (fileName.startsWith(`${prefix}-`) || fileName.startsWith(`${prefix}.`));
-      })
-      .sort();
-    
-    if (keys.length > 0) {
-      console.log(`[AnimatedCharacter] Found ${keys.length} frames for prefix "${prefix}"`);
-      // Log the first module to verify structure
-      console.log(`[AnimatedCharacter] Sample module for ${keys[0]}:`, modules[keys[0]]);
-    } else {
-      console.warn(`[AnimatedCharacter] No frames found for prefix "${prefix}"`);
-    }
-
-    return keys.map(key => {
-      // Handle both ES module (with .default) and direct string formats
-      const mod = modules[key];
-      return typeof mod === 'string' ? mod : mod.default;
-    });
+  function sequence(prefix: string) {
+    return Object.keys(frames)
+      .filter(path => path.split('/').pop()?.startsWith(`${prefix}-`))
+      .sort()
+      .map(path => frames[path]!);
   }
 
-  // Define animation sequences for both themes
-  // We now use the light assets for both themes, inverting them via CSS for dark mode
   const sequences = {
-    light: {
-      default: getSequence(lightModules, 'tl-1'), // Default idle state
-      'top-left': getSequence(lightModules, 'tl'),
-      'top-right': getSequence(lightModules, 'tr'),
-      'bottom-left': getSequence(lightModules, 'bl'),
-      'bottom-right': getSequence(lightModules, 'br')
-    },
-    dark: {
-      default: getSequence(lightModules, 'tl-1'), // Default idle state
-      'top-left': getSequence(lightModules, 'tl'),
-      'top-right': getSequence(lightModules, 'tr'),
-      'bottom-left': getSequence(lightModules, 'bl'),
-      'bottom-right': getSequence(lightModules, 'br')
-    }
+    'top-left': sequence('tl'), 'top-right': sequence('tr'),
+    'bottom-left': sequence('bl'), 'bottom-right': sequence('br')
   };
-
+  let currentSequence = sequences['top-left'];
   let currentFrameIndex = 0;
-  let currentSequence: string[] = [];
-  let animationInterval: any;
-  let isReverse = false;
-  
-  // Track previous state to prevent infinite loops in reactive statements
-  let lastMode: string = '';
-  let lastCorner: string | null = null;
+  let animationInterval: ReturnType<typeof setInterval> | undefined;
 
-  // React to theme and active corner changes
-  $: {
-    const mode = $theme === 'dark' ? 'dark' : 'light';
-    const corner = $activeCorner as Exclude<Corner, ''> | '';
-    
-    // Only run logic if inputs actually changed
-    if (mode !== lastMode || corner !== lastCorner) {
-      console.log(`[AnimatedCharacter] State changed - Mode: ${mode}, Corner: "${corner}" (was: ${lastMode}, ${lastCorner})`);
-      
-      lastMode = mode;
-      lastCorner = corner;
-
-      if (corner === '') {
-        // If closing, reverse the previous animation back to frame 0
-        if (currentSequence.length > 0 && currentFrameIndex > 0) {
-          console.log('[AnimatedCharacter] Reversing animation');
-          isReverse = true;
-          playAnimation();
-        } else {
-          // Idle state
-          console.log('[AnimatedCharacter] Resetting to idle');
-          currentSequence = sequences[mode].default;
-          currentFrameIndex = 0;
-          stopAnimation();
-        }
-      } else {
-        // Start new animation
-        const nextSequence = sequences[mode][corner];
-        console.log(`[AnimatedCharacter] Starting animation for ${corner}. Frames: ${nextSequence?.length}`);
-        
-        if (nextSequence && nextSequence.length > 0) {
-          currentSequence = nextSequence;
-          isReverse = false;
-          currentFrameIndex = 0;
-          playAnimation();
-        } else {
-          console.error(`[AnimatedCharacter] Sequence not found or empty for ${corner}`);
-        }
-      }
+  function animate(corner: Corner) {
+    clearInterval(animationInterval);
+    if (corner) {
+      currentSequence = sequences[corner];
+      currentFrameIndex = 0;
     }
-  }
-
-  function playAnimation() {
-    stopAnimation();
-    
-    // Frame duration (ms) - adjust to match CSS duration (0.3s total / 5 frames = 60ms)
-    const frameDuration = 60; 
-    
-    console.log(`[AnimatedCharacter] Playing animation. Reverse: ${isReverse}, Frames: ${currentSequence.length}`);
-
+    const reverse = corner === '';
     animationInterval = setInterval(() => {
-      if (isReverse) {
-        if (currentFrameIndex > 0) {
-          currentFrameIndex--;
-        } else {
-          stopAnimation();
-        }
+      if (reverse ? currentFrameIndex > 0 : currentFrameIndex < currentSequence.length - 1) {
+        currentFrameIndex += reverse ? -1 : 1;
       } else {
-        if (currentFrameIndex < currentSequence.length - 1) {
-          currentFrameIndex++;
-        } else {
-          stopAnimation();
-        }
+        clearInterval(animationInterval);
+        activeCorner.faceFinished(corner);
       }
-    }, frameDuration);
+    }, 60);
   }
 
-  function stopAnimation() {
-    if (animationInterval) clearInterval(animationInterval);
-  }
-
-  onDestroy(() => {
-    stopAnimation();
-  });
+  $: animate($activeCorner);
+  onDestroy(() => clearInterval(animationInterval));
 </script>
 
 <div class="hero-animation">
