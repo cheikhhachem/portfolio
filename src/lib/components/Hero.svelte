@@ -7,37 +7,31 @@
   import SnakeGame from './SnakeGame.svelte';
   import SecretCard from './SecretCard.svelte';
 
+  import CheatSheet from './CheatSheet.svelte';
+  import LifeGame from './LifeGame.svelte';
+  import { matchEasterEgg, type EasterEgg } from '../utils/easterEggs';
+
   let hovered = false;
-  let gameOpen = false;
-  const secret = [4, 2, 6, 5];
-  let secretProgress = 0;
+  let openEgg: EasterEgg | null = null;
   let cubeHistory = '';
-  let cardName: string | null = null;
-  const cardSecrets: Record<string, string> = {
-    '212121': 'Swyniye',
-    '515151': 'Tox',
-    '414141': 'Ely'
-  };
 
   function enterCube(number: number) {
-    if (gameOpen || cardName) return;
+    if (openEgg) return;
     cubeHistory = (cubeHistory + number).slice(-6);
-    const name = cardSecrets[cubeHistory];
-    if (name) {
-      cardName = name;
-      cubeHistory = '';
-      secretProgress = 0;
-      return;
-    }
-    secretProgress = number === secret[secretProgress]
-      ? secretProgress + 1
-      : number === secret[0] ? 1 : 0;
+    const egg = matchEasterEgg(cubeHistory, false);
+    if (egg) { openEgg = egg; cubeHistory = ''; }
   }
 
   function enterHead() {
+    if (openEgg) return;
+    openEgg = matchEasterEgg(cubeHistory, true);
     cubeHistory = '';
-    if (secretProgress === secret.length) gameOpen = true;
-    secretProgress = 0;
+  }
+
+  function closeEgg() {
+    openEgg = null;
+    hovered = false;
+    cubeHistory = '';
   }
 </script>
 
@@ -62,12 +56,14 @@
   </div>
 </div>
 
-{#if cardName}
-  <SecretCard name={cardName} onClose={() => { cardName = null; hovered = false; }} />
-{/if}
-
-{#if gameOpen}
-  <SnakeGame onClose={() => { gameOpen = false; hovered = false; }} />
+{#if openEgg === 'snake'}
+  <SnakeGame onClose={closeEgg} />
+{:else if openEgg === 'life'}
+  <LifeGame onClose={closeEgg} />
+{:else if openEgg === 'cheats'}
+  <CheatSheet onClose={closeEgg} />
+{:else if openEgg}
+  <SecretCard name={openEgg} onClose={closeEgg} />
 {/if}
 
 <style>
