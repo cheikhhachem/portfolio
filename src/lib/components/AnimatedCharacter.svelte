@@ -183,6 +183,7 @@
   }
 
   .hero-animation__img {
+    pointer-events: auto;
     height: 100%;
     width: auto;
     max-width: 100%;

@@ -4,7 +4,7 @@
   import { onMount, onDestroy } from 'svelte';
   
   export let iconRefs: any[];
-  export let hoverSquares: HTMLDivElement[];
+  export let hoverSquares: HTMLButtonElement[];
   
   const threlte = useThrelte();
   

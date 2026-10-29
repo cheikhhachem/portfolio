@@ -4,30 +4,62 @@
   import AnimatedCharacter from './AnimatedCharacter.svelte';
   import Icons3DScene from './Icons3DScene.svelte';
 
+  import SnakeGame from './SnakeGame.svelte';
+
   let hovered = false;
+  let gameOpen = false;
+  const secret = [4, 2, 6, 5];
+  let secretProgress = 0;
+
+  function enterCube(number: number) {
+    secretProgress = number === secret[secretProgress]
+      ? secretProgress + 1
+      : number === secret[0] ? 1 : 0;
+  }
+
+  function enterHead() {
+    if (secretProgress === secret.length) gameOpen = true;
+    secretProgress = 0;
+  }
 </script>
 
 <div class="hero-wrapper">
   <div class="three-d-background">
-    <Icons3DScene masterHover={hovered} />
+    <Icons3DScene masterHover={hovered} onCubeEnter={enterCube} />
   </div>
   
   <div id="hero"
     role="region"
     aria-label="Hero section"
-    style="pointer-events: auto;"
   >
     <h5 class:hero-hovered={hovered}>{t($language, 'greeting')}</h5>
     <h1 class:hero-hovered={hovered}>{t($language, 'name')}</h1>
     <p class:hero-hovered={hovered}>{t($language, 'role')}</p>
-    <AnimatedCharacter 
-      on:mouseenter={() => { hovered = true; }} 
-      on:mouseleave={() => { hovered = false; }} 
-    />
+    <button type="button" class="head-trigger" aria-label="Animated character" on:click={enterHead}>
+      <AnimatedCharacter
+        on:mouseenter={() => { hovered = true; enterHead(); }}
+        on:mouseleave={() => { hovered = false; }}
+      />
+    </button>
   </div>
 </div>
 
+{#if gameOpen}
+  <SnakeGame onClose={() => { gameOpen = false; hovered = false; }} />
+{/if}
+
 <style>
+  .head-trigger {
+    display: block;
+    margin: auto;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: none;
+  }
+  .head-trigger:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
   .hero-wrapper {
     position: fixed;
     top: 0;

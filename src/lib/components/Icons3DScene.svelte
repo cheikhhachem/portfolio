@@ -5,6 +5,7 @@
   import HoverSync from './HoverSync.svelte';
   import { theme } from '../stores/theme';
   import { onMount } from 'svelte';
+  import { Color, WebGLRenderer } from 'three';
   import lang1 from '../../assets/icons-lang/lang1.png';
   import lang2 from '../../assets/icons-lang/lang2.png';
   import lang3 from '../../assets/icons-lang/lang3.png';
@@ -15,12 +16,13 @@
   import lang8 from '../../assets/icons-lang/lang8.png';
   
   export let masterHover = false;
+  export let onCubeEnter: (number: number) => void = () => {};
   let hoveredIndex = -1;
   let iconRefs: any[] = [];
-  let hoverSquares: HTMLDivElement[] = [];
+  let hoverSquares: HTMLButtonElement[] = [];
   
   // Background color based on theme
-  $: backgroundColor = $theme === 'dark' ? '#000000' : '#ffffff';
+  $: backgroundColor = new Color($theme === 'dark' ? '#202124' : '#ffffff');
   
   // 4 left, 4 right vertical stack layout
   // Adjust positions based on screen size
@@ -41,9 +43,9 @@
   
   // 4 left, 4 right vertical stack layout
   function getSideStackPositions(countPerSide: number, xOffset: number, ySpread: number) {
-    const positions = [];
+    const positions: [number, number, number][] = [];
     for (let i = 0; i < countPerSide; i++) {
-      const y = ySpread * (i - (countPerSide - 1) / 2);
+      const y = ySpread * ((countPerSide - 1) / 2 - i);
       positions.push([xOffset, y, 0]);
     }
     return positions;
@@ -80,18 +82,30 @@
 <div class="scene-container">
   <!-- Hover squares for each icon -->
   {#each icons as _, i}
-    <div 
+    <button
+      type="button"
+      aria-label={`Cube ${i + 1}`}
       class="hover-square"
       class:disabled={masterHover}
       bind:this={hoverSquares[i]}
-      on:mouseenter={() => hoveredIndex = i}
+      on:pointerenter={(event) => {
+        hoveredIndex = i;
+        if (event.pointerType !== 'touch') onCubeEnter(i + 1);
+      }}
+      on:pointerdown={(event) => {
+        if (event.pointerType === 'touch') onCubeEnter(i + 1);
+      }}
+      on:keydown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onCubeEnter(i + 1);
+        }
+      }}
       on:mouseleave={() => hoveredIndex = -1}
-      role="button"
-      tabindex="0"
-    ></div>
+    ></button>
   {/each}
   
-  <Canvas rendererParameters={{ antialias: true, powerPreference: 'high-performance', precision: 'mediump', alpha: true }} size={{ width: undefined, height: undefined, pixelRatio: Math.min(window.devicePixelRatio, 2) }}>
+  <Canvas createRenderer={(canvas) => new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', precision: 'mediump', alpha: true })} dpr={Math.min(window.devicePixelRatio, 2)}>
     <T.PerspectiveCamera makeDefault position={[0, 0, 7]} fov={50}>
       <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
     </T.PerspectiveCamera>
@@ -130,6 +144,9 @@
   
   .hover-square {
     position: absolute;
+    padding: 0;
+    border: 0;
+    background: transparent;
     width: 60px;
     height: 60px;
     pointer-events: auto;

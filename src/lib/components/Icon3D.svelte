@@ -29,7 +29,7 @@
   
   // Smooth springs for position and rotation
   const position = spring(basePosition, { stiffness: 0.05, damping: 0.3 });
-  const rotation = spring([0, 0, 0], { stiffness: 0.1, damping: 0.4 });
+  const rotation = spring<[number, number, number]>([0, 0, 0], { stiffness: 0.1, damping: 0.4 });
   const scale = spring(1, { stiffness: 0.15, damping: 0.5 });
   
   let loadedImage: HTMLImageElement | null = null;
