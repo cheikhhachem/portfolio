@@ -5,19 +5,37 @@
   import Icons3DScene from './Icons3DScene.svelte';
 
   import SnakeGame from './SnakeGame.svelte';
+  import SecretCard from './SecretCard.svelte';
 
   let hovered = false;
   let gameOpen = false;
   const secret = [4, 2, 6, 5];
   let secretProgress = 0;
+  let cubeHistory = '';
+  let cardName: string | null = null;
+  const cardSecrets: Record<string, string> = {
+    '212121': 'Swyniye',
+    '515151': 'Tox',
+    '414141': 'Ely'
+  };
 
   function enterCube(number: number) {
+    if (gameOpen || cardName) return;
+    cubeHistory = (cubeHistory + number).slice(-6);
+    const name = cardSecrets[cubeHistory];
+    if (name) {
+      cardName = name;
+      cubeHistory = '';
+      secretProgress = 0;
+      return;
+    }
     secretProgress = number === secret[secretProgress]
       ? secretProgress + 1
       : number === secret[0] ? 1 : 0;
   }
 
   function enterHead() {
+    cubeHistory = '';
     if (secretProgress === secret.length) gameOpen = true;
     secretProgress = 0;
   }
@@ -43,6 +61,10 @@
     </button>
   </div>
 </div>
+
+{#if cardName}
+  <SecretCard name={cardName} onClose={() => { cardName = null; hovered = false; }} />
+{/if}
 
 {#if gameOpen}
   <SnakeGame onClose={() => { gameOpen = false; hovered = false; }} />
