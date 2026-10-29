@@ -6,9 +6,9 @@
   import { CubePhysics } from '../utils/cubePhysics';
 
   import HoverSync from './HoverSync.svelte';
-  import { theme } from '../stores/theme';
+  import { theme, themeTransition } from '../stores/theme';
   import { onMount } from 'svelte';
-  import { Color, WebGLRenderer } from 'three';
+  import { WebGLRenderer } from 'three';
   import lang1 from '../../assets/icons-lang/lang1.png';
   import lang2 from '../../assets/icons-lang/lang2.png';
   import lang3 from '../../assets/icons-lang/lang3.png';
@@ -26,8 +26,7 @@
   let iconRefs: any[] = [];
   let hoverSquares: HTMLButtonElement[] = [];
   
-  // Background color based on theme
-  $: backgroundColor = new Color($theme === 'dark' ? '#202124' : '#ffffff');
+  $: if ($themeTransition.phase !== 'idle') hoveredIndex = -1;
   
   // 4 left, 4 right vertical stack layout
   // Adjust positions based on screen size
@@ -90,7 +89,8 @@
       type="button"
       aria-label={`Cube ${i + 1}`}
       class="hover-square"
-      class:disabled={masterHover}
+      class:disabled={masterHover || $themeTransition.phase !== 'idle'}
+      disabled={$themeTransition.phase !== 'idle'}
       bind:this={hoverSquares[i]}
       on:pointerenter={(event) => {
         hoveredIndex = i;
@@ -114,7 +114,7 @@
       <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
     </T.PerspectiveCamera>
     
-    <T.Scene background={backgroundColor} />
+    <!-- A transparent canvas lets the page theme reveal cover the whole scene. -->
     
     <T.AmbientLight intensity={0.6} />
     <T.DirectionalLight position={[3, 3, 5]} intensity={0.8} />
@@ -126,7 +126,7 @@
         index={i}
         rotationSpeed={icon.rotationSpeed}
         {physics}
-        hovered={hoveredIndex === i}
+        hovered={hoveredIndex === i && $themeTransition.phase === 'idle'}
         {masterHover}
         isDark={$theme === 'dark'}
         bind:this={iconRefs[i]}

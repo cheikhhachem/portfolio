@@ -92,3 +92,25 @@ h1, h2, h5, p {
     transform: translateY(7rem);
   }
 }
+
+
+/* The new theme flows over the old one; native snapshot cross-fading stays off. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+
+.theme-liquid-wash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  clip-path: circle(0 at 50% 100%);
+}
+
+/* Keep the theme switch reachable while a snapshot is on screen. */
+::view-transition { pointer-events: none; }

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { theme } from '../stores/theme';
+  import { language } from '../stores/language';
+  import { t } from '../utils/translations';
+  import { theme, themeTransition, requestedTheme } from '../stores/theme';
 </script>
 
 <div id="color-mode">
@@ -7,7 +9,9 @@
     <input 
       type="checkbox" 
       class="toggle"
-      checked={$theme === 'dark'}
+      checked={$requestedTheme === 'dark'}
+      aria-label={t($language, $requestedTheme === 'dark' ? 'useLightTheme' : 'useDarkTheme')}
+      aria-busy={$themeTransition.phase !== 'idle'}
       on:change={() => theme.toggle()}
     >
     <span class="slider">
@@ -43,6 +47,8 @@
     height: 0;
     position: absolute;
   }
+
+  .toggle:focus-visible + .slider { outline: 2px solid var(--text); outline-offset: 6px; }
 
   .slider {
     box-sizing: border-box;

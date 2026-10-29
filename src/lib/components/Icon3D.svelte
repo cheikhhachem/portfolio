@@ -1,9 +1,13 @@
 <script lang="ts">
-  import { T, useTask } from '@threlte/core';
+  import { T, useTask, useThrelte } from '@threlte/core';
   import { spring } from 'svelte/motion';
-  import { Texture, RepeatWrapping, type Mesh, type Group, BoxGeometry, EdgesGeometry } from 'three';
+  import { Texture, RepeatWrapping, type Mesh, type Group, type PerspectiveCamera, BoxGeometry, EdgesGeometry } from 'three';
   import { onMount, onDestroy } from 'svelte';
   import type { CubePhysics } from '../utils/cubePhysics';
+  import { themeTransition } from '../stores/theme';
+  import { CUBE_EXIT_MS, CUBE_ENTER_MS, createCubeFlight, sampleCubeFlight, type CubeFlight, type Position } from '../utils/themeEffects';
+
+  const threlte = useThrelte();
 
   // Shared geometry for all icons to improve performance
   const geometry = new BoxGeometry(0.22, 0.22, 0.22);
@@ -120,13 +124,47 @@
   
   // Capture the physical position for freeze-on-hover
   let hoverPosition: [number, number, number] | null = null;
+  let lastPhase = 'idle';
+  let flight: CubeFlight | null = null;
+
+  function floatingPosition(): Position {
+    return [
+      basePosition[0] + Math.sin(time * 1.5 + index * 2) * 0.05 + Math.sin(time + index * Math.PI) * 0.1 + offsetX,
+      basePosition[1] + Math.sin(time * 2 + index) * 0.1 + offsetY,
+      basePosition[2] + Math.cos(time * 1.5 + index * 2) * 0.05
+    ];
+  }
 
   // Use Threlte's useTask for animation loop instead of requestAnimationFrame
   useTask((delta) => {
     time += Math.min(delta, 0.05) * 0.33;
     cube.pinned = hovered && !masterHover;
     
-    if (hovered && !masterHover) {
+    const motion = $themeTransition;
+    if (motion.phase !== 'idle') {
+      hoverPosition = null;
+      cube.pinned = true;
+      if (motion.phase !== lastPhase) {
+        const from: Position = [cube.body.position.x, cube.body.position.y, cube.body.position.z];
+        if (motion.phase === 'exiting') {
+          const camera = threlte.camera.current as PerspectiveCamera;
+          const halfWidth = Math.tan(camera.fov * Math.PI / 360) * (camera.position.z + 1) * camera.aspect;
+          const side = index < 4 ? -1 : 1;
+          const edge = Math.max(halfWidth + 1.2, Math.abs(from[0]) + 1.5);
+          flight = createCubeFlight(from, [side * edge, from[1] + (Math.random() - 0.5) * 1.4, 0]);
+        } else if (motion.phase === 'entering') {
+          flight = createCubeFlight(from, floatingPosition());
+        }
+      }
+      if (flight) {
+        const position = motion.phase === 'changing' ? flight.points[3]
+          : sampleCubeFlight(flight, performance.now() - motion.startedAt,
+            motion.phase === 'exiting' ? CUBE_EXIT_MS : CUBE_ENTER_MS, motion.phase === 'entering');
+        cube.target.set(...position);
+      }
+      rotation.set([time * rotationSpeed, time * rotationSpeed, time * rotationSpeed]);
+      scale.set(1);
+    } else if (hovered && !masterHover) {
       // Individual hover: freeze, scale up, fast spin
       if (!hoverPosition) {
         hoverPosition = [cube.body.position.x, cube.body.position.y, cube.body.position.z];
@@ -166,11 +204,7 @@
       hoverPosition = null;
 
       // Normal floating animation
-      const newPos: [number, number, number] = [
-        basePosition[0] + Math.sin(time * 1.5 + index * 2) * 0.05 + Math.sin(time + index * Math.PI) * 0.1 + offsetX,
-        basePosition[1] + Math.sin(time * 2 + index) * 0.1 + offsetY,
-        basePosition[2] + Math.cos(time * 1.5 + index * 2) * 0.05
-      ];
+      const newPos = floatingPosition();
       cube.target.set(...newPos);
       
       rotation.set([
@@ -180,6 +214,7 @@
       ]);
       scale.set(1);
     }
+    lastPhase = motion.phase;
     cube.rotation.setFromEuler(...$rotation, 'XYZ');
     cube.scale = $scale;
   }, { before: physics.taskKey });
