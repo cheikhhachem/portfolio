@@ -9,7 +9,7 @@
 
   import CheatSheet from './CheatSheet.svelte';
   import LifeGame from './LifeGame.svelte';
-  import { matchEasterEgg, type EasterEgg } from '../utils/easterEggs';
+  import { appendCube, matchEasterEgg, type EasterEgg } from '../utils/easterEggs';
 
   let hovered = false;
   let openEgg: EasterEgg | null = null;
@@ -17,7 +17,7 @@
 
   function enterCube(number: number) {
     if (openEgg) return;
-    cubeHistory = (cubeHistory + number).slice(-6);
+    cubeHistory = appendCube(cubeHistory, number);
     const egg = matchEasterEgg(cubeHistory, false);
     if (egg) { openEgg = egg; cubeHistory = ''; }
   }

@@ -7,8 +7,15 @@ export const easterEggs = [
   { id: 'cheats', code: '1854', face: true, label: 'cheatTitle' },
   { id: 'Swyniye', code: '212121', face: false, label: null },
   { id: 'Tox', code: '515151', face: false, label: null },
-  { id: 'Ely', code: '414141', face: false, label: null }
+  { id: 'Ely', code: '414141', face: false, label: null },
+  { id: 'ey9ani , A58ar mahu assfar (❤️)', code: '27243243', face: true, label: null }
 ] as const satisfies readonly { id: string; code: string; face: boolean; label: TranslationKey | null }[];
+
+const maxCodeLength = Math.max(...easterEggs.map(egg => egg.code.length));
+
+export function appendCube(history: string, number: number): string {
+  return (history + number).slice(-maxCodeLength);
+}
 
 export type EasterEgg = typeof easterEggs[number]['id'];
 

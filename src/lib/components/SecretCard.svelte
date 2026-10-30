@@ -23,10 +23,16 @@
     <div class="reveal">
       <div class="orbit" aria-hidden="true"><span></span></div>
       <span class="caption">YOU FOUND ME</span>
-      <h2 id="secret-name" aria-label={name}>
-        {#each [...name] as letter, index}
-          <span class="letter" aria-hidden="true" style={`--delay: ${260 + index * 100}ms`}>{letter}</span>
-        {/each}<span class="cursor" aria-hidden="true"></span>
+      <h2 id="secret-name" aria-label={name} class:message={name.includes(' ')}>
+        {#if name.includes(' ')}
+          {#each name.split(' ') as word, index}
+            <span class="letter word" aria-hidden="true" style={`--delay: ${260 + index * 160}ms`}>{word}</span>{' '}
+          {/each}
+        {:else}
+          {#each [...name] as letter, index}
+            <span class="letter" aria-hidden="true" style={`--delay: ${260 + index * 100}ms`}>{letter}</span>
+          {/each}
+        {/if}<span class="cursor" aria-hidden="true"></span>
       </h2>
       <div class="underline" aria-hidden="true"></div>
     </div>
@@ -52,6 +58,8 @@
   .orbit span { position: absolute; top: 50%; left: -3px; width: 5px; height: 5px; border-radius: 50%; background: var(--text); }
   .caption { position: relative; margin-bottom: 14px; animation: caption-enter 600ms 150ms both; }
   h2 { display: flex; align-items: baseline; margin: 0; font-size: clamp(38px, 10vw, 64px); font-weight: 500; line-height: 1.25; letter-spacing: -.04em; direction: ltr; }
+  h2.message { display: block; max-width: 100%; font-size: clamp(24px, 6vw, 36px); text-align: center; line-height: 1.5; }
+  .word { white-space: nowrap; }
   .letter { display: inline-block; animation: letter-enter 650ms var(--delay) cubic-bezier(.16, 1, .3, 1) both; }
   .cursor { display: inline-block; align-self: center; height: .75em; width: 2px; margin-left: 8px; background: currentColor; animation: cursor-blink 1s 350ms steps(2, jump-none) 4 both; }
   .underline { width: 42px; height: 2px; margin-top: 22px; background: currentColor; transform-origin: left; animation: underline-enter 700ms 650ms both; }
